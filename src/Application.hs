@@ -2,9 +2,9 @@ module Application where
 
 import Api.Core (Api(Api))
 import Control.Lens
-import Snap.Snaplet
+import Snap.Snaplet (Snaplet, Handler)
 
-data App = App { _api :: (Snaplet Api) }
+data App = App { _api :: Snaplet Api }
 api :: Lens' App (Snaplet Api)
 api = lens _api (\a b -> a { _api = b })
 
