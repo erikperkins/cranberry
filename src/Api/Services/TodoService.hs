@@ -20,7 +20,7 @@ instance HasPostgres (Handler b TodoService) where
   getPostgresState = with db get
 
 todoServiceInit :: SnapletInit b TodoService
-todoServiceInit = makeSnaplet "todos" "Todo Service" Nothing $ do
+todoServiceInit = makeSnaplet "todo" "Todo Service" Nothing $ do
   pg <- nestSnaplet "pg" db pgsInit
   addRoutes todoRoutes
   return $ TodoService pg

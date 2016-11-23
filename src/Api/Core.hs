@@ -14,7 +14,7 @@ todoService = lens _todoService (\a b -> a { _todoService = b })
 
 apiInit :: SnapletInit b Api
 apiInit = makeSnaplet "api" "Core Api" Nothing $ do
-  todoSnaplet <- nestSnaplet "todos" todoService todoServiceInit
+  todoSnaplet <- nestSnaplet "todo" todoService todoServiceInit
   addRoutes apiRoutes
   return $ Api todoSnaplet
 
