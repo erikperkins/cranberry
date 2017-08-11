@@ -1,4 +1,4 @@
-FROM haskell:8.0.1
+FROM haskell:8.0.2
 
 RUN apt-get update
 RUN apt-get -y install libpq-dev
