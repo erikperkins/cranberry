@@ -6,14 +6,14 @@ RUN apt-get -y install libpq-dev
 RUN cabal update
 RUN cabal install snap snap-templates
 
-ENV SNAP_HOME /opt/server
+ENV CRANBERRY_HOME /opt/server
 
-WORKDIR $SNAP_HOME
+WORKDIR $CRANBERRY_HOME
 
-ADD ./snap_app.cabal $SNAP_HOME/snap_app.cabal
+ADD ./cranberry.cabal $CRANBERRY_HOME/cranberry.cabal
 
 ENV PATH /root/.cabal/bin:$PATH
 
-ADD ./ $SNAP_HOME
+ADD ./ $CRANBERRY_HOME
 
-RUN cd $SNAP_HOME && cabal install
+RUN cd $CRANBERRY_HOME && cabal install
