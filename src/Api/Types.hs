@@ -3,18 +3,14 @@
 
 module Api.Types where
 
-import Control.Applicative
-import qualified Data.Text as T
+import qualified Data.Text as T (Text)
 import Data.Aeson (ToJSON(toJSON), object, (.=))
-import Snap.Snaplet.PostgresqlSimple
 
-data Todo = Todo {
-  todoId :: Int,
-  todoText :: T.Text
+data Forecast = Forecast {
+  observed :: T.Text,
+  predicted :: T.Text
 }
 
-instance FromRow Todo where
-  fromRow = Todo <$> field <*> field
-
-instance ToJSON Todo where
-  toJSON (Todo id text) = object ["id" .= id, "text" .= text]
+instance ToJSON Forecast where
+  toJSON (Forecast predicted observed) =
+    object ["predicted" .= predicted, "observed" .= observed]

@@ -1,19 +1,14 @@
-FROM haskell:8.0.2
+FROM haskell:8.2
 
 RUN apt-get update
-RUN apt-get -y install libpq-dev
+RUN apt-get install -y haskell-platform
+ENV CRANBERRY_HOME /cranberry
+RUN mkdir $CRANBERRY_HOME
 
+WORKDIR $CRANBERRY_HOME
+ADD . $CRANBERRY_HOME
+RUN cabal sandbox init
 RUN cabal update
-RUN cabal install snap snap-templates
+RUN cabal install --reorder-goals
 
-ENV SNAP_HOME /opt/server
-
-WORKDIR $SNAP_HOME
-
-ADD ./snap_app.cabal $SNAP_HOME/snap_app.cabal
-
-ENV PATH /root/.cabal/bin:$PATH
-
-ADD ./ $SNAP_HOME
-
-RUN cd $SNAP_HOME && cabal install
+CMD [".cabal-sandbox/bin/cranberry", "-p", "80"]
