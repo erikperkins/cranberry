@@ -1,0 +1,7 @@
+version: '2'
+services:
+  cranberry:
+    image: erikperkins/cranberry
+    restart: on-failure
+    ports:
+      - 80:80

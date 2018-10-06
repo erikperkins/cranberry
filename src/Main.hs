@@ -1,8 +1,11 @@
+{-# LANGUAGE OverloadedStrings #-}
+-- serve site
+
 module Main where
 
-import Snap.Http.Server
-import Snap.Snaplet (serveSnaplet)
 import Site
+import Snap.Http.Server (defaultConfig)
+import Snap.Snaplet (serveSnaplet)
 
 main :: IO ()
-main = serveSnaplet defaultConfig app
+main = serveSnaplet defaultConfig cranberry

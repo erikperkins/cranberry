@@ -1,29 +1,30 @@
 {-# LANGUAGE OverloadedStrings #-}
+-- Define routes and request handlers. Export via app function.
 
-module Site (app) where
+module Site (cranberry) where
 
-import Snap.Core (writeBS, getParam)
-import Snap.Snaplet
-import Data.ByteString
-import Api.Core (apiInit)
+import Api.Core (Api(Api), apiInit)
 import Application
+import Data.ByteString (ByteString)
+import Snap.Core (writeBS, getParam)
+import Snap.Snaplet (addRoutes, Handler, makeSnaplet, nestSnaplet, SnapletInit)
 
-app :: SnapletInit App App
-app = makeSnaplet "app" "An example snaplet application" Nothing $ do
-  apiSnaplet <- nestSnaplet "api" api apiInit
+cranberry :: SnapletInit App App
+cranberry = makeSnaplet "app" "Snaplet example application" Nothing $ do
+  api <- nestSnaplet "api" api apiInit
   addRoutes routes
-  return $ App apiSnaplet
+  return $ App api
 
-routes :: [(ByteString, AppHandler ())]
+routes :: [(ByteString, Handler App App ())]
 routes = [
     ("/", root),
-    ("echo/:param", echo)
+    ("echo/:slug", echo)
   ]
 
 root :: AppHandler ()
-root = writeBS "Welcome to Snap!\n"
+root = writeBS "Hello, Snap!\n"
 
 echo :: AppHandler ()
 echo = do
-  param <- getParam "param"
-  maybe (writeBS "Please specify echo parameter") writeBS param
+  slug <- getParam "slug"
+  maybe (writeBS "Please specify echo parameter") writeBS slug
