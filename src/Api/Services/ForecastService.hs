@@ -5,11 +5,16 @@ module Api.Services.ForecastService where
 
 import Api.Types
 import Control.Lens (lens, Lens')
+import Control.Monad (forM)
 import Control.Monad.IO.Class
-import Data.Aeson (encode)
+import Data.Aeson (encode, Object, Value(..))
+import Data.List (sort, unzip, zip)
+import Data.Text (Text)
 import Data.Text.Encoding (decodeUtf8)
-import Database.Redis (ConnectInfo, connectDatabase, connectHost, defaultConnectInfo, get, set)
+import Database.Redis (ConnectInfo, connectDatabase, connectHost, defaultConnectInfo)
+import Database.Redis (get, hget, hgetall, keys, set)
 import qualified Data.ByteString.Char8 as B (ByteString)
+import GHC.Exts (fromList)
 import Snap.Core (method, Method(GET), modifyResponse, setHeader, setResponseCode, writeLBS)
 import Snap.Snaplet (addRoutes, Handler, makeSnaplet, nestSnaplet, Snaplet, SnapletInit)
 import Snap.Snaplet.RedisDB
@@ -29,15 +34,28 @@ forecastRoutes = [("/", method GET forecastEndpoint)]
 
 forecastEndpoint :: Handler b ForecastService ()
 forecastEndpoint = do
-  result <- runRedisDB redis $ do get "foo"
-  value <- case result of
-    Right (Just reply) -> return $ decodeUtf8 reply
-    Left _ -> return $ decodeUtf8 ""
   modifyResponse $ setHeader "Content-Type" "application/json"
-  writeLBS . encode $ value
+  keys <- runRedisDB redis $ do keys "en:[0-9]*"
+  key:_ <- case keys of
+    Left _ -> return []
+    Right ks -> return . reverse . sort $ ks
+  values <- runRedisDB redis $ do hgetall key
+  series <- case values of
+    Left _ -> return [(0, 0)]
+    Right vs -> return . (map readPair) $ vs
+  predicted <- return . (map toTimeDatum) . (forecast 0.5) $ series
+  observed <- return . (map toTimeDatum) $ series
+  writeLBS . encode $ toForecast observed predicted
+
+forecast :: Double -> [(Int, Int)] -> [(Int, Double)]
+forecast a s = do
+  (t:ts', vs) <- return . unzip . init . sort $ s
+  fs <- return $ scanl (\x y -> (1.0 - a) * x + a * y) 20 $ map fromIntegral vs
+  ts <- return $ scanl (\x y -> y + 60) t (t:ts')
+  zip ts fs
 
 connection :: ConnectInfo
 connection = defaultConnectInfo {
   connectHost = "storage.datapun.net",
-  connectDatabase = 2
+  connectDatabase = 3
 }
