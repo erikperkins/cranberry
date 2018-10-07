@@ -4,4 +4,4 @@ services:
     image: erikperkins/cranberry
     restart: on-failure
     ports:
-      - 80:80
+      - 8000:80

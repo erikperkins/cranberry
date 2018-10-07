@@ -1,7 +1,7 @@
-FROM haskell:8.2
+FROM haskell:8.0.1
 
 RUN apt-get update
-RUN apt-get install -y haskell-platform
+RUN apt-get install -y haskell-platform libpq-dev
 ENV CRANBERRY_HOME /cranberry
 RUN mkdir $CRANBERRY_HOME
 
