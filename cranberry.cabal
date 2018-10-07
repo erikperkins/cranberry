@@ -1,10 +1,10 @@
 Name:                cranberry
 Version:             0.1
-Synopsis:            Project Synopsis Here
-Description:         Project Description Here
+Synopsis:            Time series forecast
+Description:         Exponential smoothing forecast on Redis data
 License:             AllRightsReserved
-Author:              Author
-Maintainer:          maintainer@example.com
+Author:              Erik Perkins
+Maintainer:          erik.andrew.perkins@gmail.com
 Stability:           Experimental
 Category:            Web
 Build-type:          Simple
