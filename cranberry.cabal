@@ -33,3 +33,16 @@ Executable cranberry
                  -fno-warn-unused-do-bind
   else
     ghc-options: -threaded -Wall -fwarn-tabs -funbox-strict-fields -O2
+
+Test-suite cranberry-test
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Main.hs
+  build-depends:
+    base == 4.*,
+    HUnit,
+    test-framework,
+    test-framework-hunit
+
+  ghc-options: -O0 -Wall -rtsopts -fno-warn-unused-do-bind -Werror
+  ghc-prof-options: -auto-all
