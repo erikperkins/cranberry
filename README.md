@@ -1,4 +1,4 @@
-# Cranberry
+# Cranberry [![Build Status](https://travis-ci.com/erikperkins/cranberry.svg?branch=master)](https://travis-ci.com/erikperkins/cranberry) [![Coverage Status](https://coveralls.io/repos/github/erikperkins/cranberry/badge.svg?branch=master)](https://coveralls.io/github/erikperkins/cranberry?branch=master)
 This is the Haskell component of Data Punnet. It is a JSON API built on the high-performance [Snap framework](www.snapframework.com).
 
 ## Build
