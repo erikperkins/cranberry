@@ -5,6 +5,10 @@ ghc: "8.0.1"
 script:
   - cabal sandbox init
   - cabal install --only-dependencies --enable-tests
-  - cabal configure --enable-tests
+  - cabal configure --enable-tests --enable-coverage
   - cabal build
   - cabal test
+
+after_script:
+  - cabal install hpc-coveralls
+  - .cabal-sandbox/bin/hpc-coveralls --exclude-dir=test cranberry-test
