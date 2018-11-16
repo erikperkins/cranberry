@@ -3,7 +3,7 @@
 
 module Site (cranberry) where
 
-import Api.Core (Api(Api), apiInit)
+import Api.Core (apiInit)
 import Application
 import Data.ByteString (ByteString)
 import Snap.Core (writeBS, getParam)
