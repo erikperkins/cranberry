@@ -7,7 +7,8 @@ import Api.Types
 import Control.Lens (lens, Lens')
 import Data.Aeson (encode)
 import Data.List (sort, unzip, zip)
-import Database.Redis (ConnectInfo, connectDatabase, connectHost, defaultConnectInfo)
+import Database.Redis (ConnectInfo, defaultConnectInfo)
+import Database.Redis (connectDatabase, connectHost, connectAuth)
 import Database.Redis (hgetall, keys)
 import qualified Data.ByteString.Char8 as B (ByteString)
 import Snap.Core (method, Method(GET), modifyResponse, setHeader, writeLBS)
@@ -52,5 +53,6 @@ forecast a s = do
 connection :: ConnectInfo
 connection = defaultConnectInfo {
   connectHost = "storage.datapun.net",
-  connectDatabase = 3
+  connectDatabase = 3,
+  connectAuth = Just "redis"
 }
