@@ -3,9 +3,15 @@
 
 module Main where
 
-import Site
-import Snap.Http.Server (defaultConfig)
-import Snap.Snaplet (serveSnaplet)
+--import Site
+--import Snap.Http.Server (defaultConfig)
+--import Snap.Snaplet (serveSnaplet)
+--import Control.Concurrent (forkIO)
+import Api.Twitter
 
 main :: IO ()
-main = serveSnaplet defaultConfig cranberry
+main = do
+  --_ <- forkIO twitterStream
+  twitterStream
+  --serveSnaplet defaultConfig cranberry
+  --return ()
