@@ -7,7 +7,7 @@ import Application
 import Data.ByteString (ByteString)
 import Snap.Core (writeBS, getParam)
 import Snap.Snaplet (addRoutes, Handler, makeSnaplet, nestSnaplet, SnapletInit)
-import Api.Services.ForecastService (forecastServiceInit)
+import Api.Forecast (forecastInit)
 import Snap.Snaplet.RedisDB
 import Database.Redis (ConnectInfo, defaultConnectInfo)
 import Database.Redis (connectDatabase, connectHost, connectAuth)
@@ -15,7 +15,7 @@ import Database.Redis (connectDatabase, connectHost, connectAuth)
 cranberry :: SnapletInit App App
 cranberry = makeSnaplet "app" "Snaplet example application" Nothing $ do
   redisSnaplet <- nestSnaplet "redis" redis $ redisDBInit connection
-  forecastSnaplet <- nestSnaplet "forecast" forecast $ forecastServiceInit redisSnaplet
+  forecastSnaplet <- nestSnaplet "forecast" forecast $ forecastInit redisSnaplet
   addRoutes routes
   return $ App forecastSnaplet redisSnaplet
 

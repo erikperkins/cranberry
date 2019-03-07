@@ -3,15 +3,15 @@ module Application where
 
 import Control.Lens (lens, Lens')
 import Snap.Snaplet (Handler, Snaplet)
-import Api.Services.ForecastService (ForecastService)
+import Api.Forecast (Forecast)
 import Snap.Snaplet.RedisDB
 
 data App = App {
-  _forecast :: Snaplet ForecastService,
+  _forecast :: Snaplet Forecast,
   _redis :: Snaplet RedisDB
 }
 
-forecast :: Lens' App (Snaplet ForecastService)
+forecast :: Lens' App (Snaplet Forecast)
 forecast = lens _forecast (\a b -> a { _forecast = b })
 
 redis :: Lens' App (Snaplet RedisDB)

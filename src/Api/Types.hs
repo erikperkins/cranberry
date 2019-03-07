@@ -3,7 +3,6 @@
 
 module Api.Types where
 
-import qualified Data.Text as T (Text)
 import Data.Aeson (ToJSON(toJSON), object, (.=))
 import qualified Data.ByteString.Char8 as B (ByteString, readInt)
 
@@ -13,7 +12,7 @@ data TimeDatum = TimeDatum {
 } deriving (Show)
 
 instance ToJSON TimeDatum where
-  toJSON (TimeDatum time datum) = object ["time" .= time, "datum" .= datum]
+  toJSON (TimeDatum t d) = object ["time" .= t, "datum" .= d]
 
 class ToTimeDatum a where toTimeDatum :: (Int, a) -> TimeDatum
 
@@ -23,17 +22,17 @@ instance ToTimeDatum Double where
 instance ToTimeDatum Int where
   toTimeDatum (t, d) = TimeDatum{time = t, datum = fromIntegral d}
 
-data Forecast = Forecast {
+data ForecastData = ForecastData {
   observed :: [TimeDatum],
   predicted :: [TimeDatum]
 } deriving (Show)
 
-instance ToJSON Forecast where
-  toJSON (Forecast observed predicted) =
-    object ["observed" .= observed, "predicted" .= predicted]
+instance ToJSON ForecastData where
+  toJSON (ForecastData o p) =
+    object ["observed" .= o, "predicted" .= p]
 
-toForecast :: [TimeDatum] -> [TimeDatum] -> Forecast
-toForecast o p = Forecast{observed = o, predicted = p}
+toForecast :: [TimeDatum] -> [TimeDatum] -> ForecastData
+toForecast o p = ForecastData{observed = o, predicted = p}
 
 readPair :: (B.ByteString, B.ByteString) -> (Int, Int)
 readPair (k, v) = (byteToInt k, byteToInt v)
