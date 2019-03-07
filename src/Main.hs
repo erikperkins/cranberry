@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
--- serve site
+-- Serve site
 
 module Main where
 
@@ -8,6 +8,4 @@ import Snap.Http.Server (defaultConfig)
 import Snap.Snaplet (serveSnaplet)
 
 main :: IO ()
--- Add config here from environment variables. Wrap in do block.
-main = do
-  serveSnaplet defaultConfig cranberry
+main = serveSnaplet defaultConfig cranberry

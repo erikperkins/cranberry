@@ -5,6 +5,7 @@ module Site (cranberry) where
 
 import Application
 import Data.ByteString (ByteString)
+import Data.ByteString.Char8 (pack)
 import Snap.Core (writeBS, getParam)
 import Snap.Snaplet (addRoutes, Handler, makeSnaplet, nestSnaplet, SnapletInit)
 import Api.Forecast (forecastInit)
@@ -12,8 +13,12 @@ import Snap.Snaplet.RedisDB
 import Database.Redis (ConnectInfo, defaultConnectInfo)
 import Database.Redis (connectDatabase, connectHost, connectAuth)
 
+import System.Environment (getEnv)
+import Control.Monad.IO.Class (liftIO)
+
 cranberry :: SnapletInit App App
 cranberry = makeSnaplet "app" "Snaplet example application" Nothing $ do
+  connection <- liftIO getConnectInfo
   redisSnaplet <- nestSnaplet "redis" redis $ redisDBInit connection
   forecastSnaplet <- nestSnaplet "forecast" forecast $ forecastInit redisSnaplet
   addRoutes routes
@@ -33,9 +38,13 @@ echo = do
   slug <- getParam "slug"
   maybe (writeBS "Please specify echo parameter") writeBS slug
 
-connection :: ConnectInfo
-connection = defaultConnectInfo {
-  connectHost = "storage.datapun.net",
-  connectDatabase = 3,
-  connectAuth = Just "redis"
-}
+getConnectInfo :: IO ConnectInfo
+getConnectInfo = do
+  host <- getEnv "REDIS_HOST"
+  database <- getEnv "REDIS_DATABASE"
+  password <- getEnv "REDIS_PASSWORD"
+  return defaultConnectInfo {
+    connectHost = host,
+    connectDatabase = read database,
+    connectAuth = Just (pack password)
+  }
