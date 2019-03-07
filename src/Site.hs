@@ -3,17 +3,21 @@
 
 module Site (cranberry) where
 
-import Api.Core (apiInit)
 import Application
 import Data.ByteString (ByteString)
 import Snap.Core (writeBS, getParam)
 import Snap.Snaplet (addRoutes, Handler, makeSnaplet, nestSnaplet, SnapletInit)
+import Api.Services.ForecastService (forecastServiceInit)
+import Snap.Snaplet.RedisDB
+import Database.Redis (ConnectInfo, defaultConnectInfo)
+import Database.Redis (connectDatabase, connectHost, connectAuth)
 
 cranberry :: SnapletInit App App
 cranberry = makeSnaplet "app" "Snaplet example application" Nothing $ do
-  api <- nestSnaplet "api" api apiInit
+  redisSnaplet <- nestSnaplet "redis" redis $ redisDBInit connection
+  forecastSnaplet <- nestSnaplet "forecast" forecast $ forecastServiceInit redisSnaplet
   addRoutes routes
-  return $ App api
+  return $ App forecastSnaplet redisSnaplet
 
 routes :: [(ByteString, Handler App App ())]
 routes = [
@@ -28,3 +32,10 @@ echo :: AppHandler ()
 echo = do
   slug <- getParam "slug"
   maybe (writeBS "Please specify echo parameter") writeBS slug
+
+connection :: ConnectInfo
+connection = defaultConnectInfo {
+  connectHost = "storage.datapun.net",
+  connectDatabase = 3,
+  connectAuth = Just "redis"
+}
