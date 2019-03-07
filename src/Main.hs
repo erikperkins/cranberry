@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
--- serve site
+-- Serve site
 
 module Main where
 
