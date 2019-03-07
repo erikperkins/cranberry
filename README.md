@@ -18,3 +18,36 @@ $ cabal install
 ```
 $ cabal test
 ```
+
+## Intellij IDEA
+Integration with Intellij IDEA can be done with the HaskForce plugin. This is a
+barebones plugin which allows Intellij to build `cabal` projects. The plugin has
+a few issues which require workarounds relative to the usual approach in
+Intellij.
+
+To register an existing `cabal` project with Intellij, select
+`Tools > Discover Cabal Packages`; this should find `cranberry.cabal`,
+and allow the `Build` button to compile the project using `cabal`. If this is
+not done, the `Build` button will still appear to function, but nothing will be
+compiled.
+
+Intellij will generate a `cranberry.iml` file and an `.idea/` directory. These
+should  be added to `.gitignore` and `.dockerignore`. To prevent them from
+showing in the `Project` sidebar, in the `Settings` dialog, find
+`Editor > File Types > Ignore files and folders`, and add `*.iml;.idea/;` to the
+list of ignored objects.
+
+HaskForce has a minimal run configuration for `cabal`, but it does not allow the
+specification of environment variables. To work around this limitation, use a
+`bash` run configuration instead. In the `Edit Configurations` dialog, add a
+bash script run configuration, and enter the following:
+```
+Script: /usr/bin/cabal run
+Interpreter path: /bin/bash
+Interpreter options: -c
+```
+This will run the command `/bin/bash -c "/usr/bin/cabal run"`, using the
+environment available to `root`. Specify the necessary environment variables in
+the run configuration (e.g. `REDIS_HOST`). This may also be necessary for test
+run configurations, depending on how environment variables are specified in the
+tests.
