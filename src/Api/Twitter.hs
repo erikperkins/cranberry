@@ -6,30 +6,35 @@ module Api.Twitter where
 import System.Environment (getEnv)
 import Control.Monad.Trans.Resource (runResourceT)
 import Control.Monad.IO.Class (liftIO)
-import Data.ByteString.Char8 (pack)
+import Data.ByteString.Char8 (pack, ByteString)
 import qualified Data.Conduit as C
 import Data.Conduit.List as CL
 import Web.Twitter.Conduit
 import Network.AMQP
 import qualified Data.Text as T (pack, Text)
-import qualified Data.ByteString.Lazy.UTF8 as BL (ByteString)
 import Control.Monad (liftM)
 import Web.Twitter.Types (Status, StreamingAPI(..))
 import Web.Twitter.Types (statusText, statusCreatedAt, rsRetweetedStatus)
-import GHC.Generics
 import Data.Aeson
+import Data.Time
+import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Data.Time.Format (formatTime, defaultTimeLocale)
 import Control.Monad.Trans.Resource (MonadThrow, MonadUnliftIO)
 import Control.Exception (catch)
 import Data.Conduit.Attoparsec (ParseError)
+import qualified Database.Redis as R
+
 
 data StrippedTweet = StrippedTweet {
-  created_at :: String,
+  created_at :: UTCTime,
   text :: T.Text
-} deriving (Generic, Show)
+} deriving Show
+
 
 instance ToJSON StrippedTweet where
-  toEncoding = genericToEncoding defaultOptions
+  toJSON (StrippedTweet c t) =
+    object ["created_at" .= twitterTime c, "text" .= t]
+
 
 twitterStream :: IO ()
 twitterStream = do
@@ -38,25 +43,45 @@ twitterStream = do
   feed <- getFeed
   conn <- getConnection
   chan <- openChannel conn
-  catch (consumeStream twInfo manager feed chan) $
+  redis <- getRedis
+
+  catch (consumeStream twInfo manager feed chan redis) $
     \e -> do
       print (e :: ParseError)
       closeConnection conn
+      R.disconnect redis
       twitterStream
+
 
 consumeStream :: (MonadThrow m, MonadUnliftIO m) =>
   TWInfo -> Manager -> (APIRequest StatusesFilter StreamingAPI)
-    -> Channel -> m ()
-consumeStream twInfo manager feed chan = do
+    -> Channel -> R.Connection -> m ()
+consumeStream twInfo manager feed chan redis = do
   runResourceT $ do
     src <- stream twInfo manager feed
-    C.runConduit $ src C..| CL.mapM_ (liftIO . (handleStream chan))
+    C.runConduit $ src C..| CL.mapM_ (liftIO . (handleStream chan redis))
+
+
+getRedis :: IO R.Connection
+getRedis = do
+  host <- getEnv "REDIS_HOST"
+  database <- liftM read (getEnv "REDIS_DATABASE")
+  password <- liftM pack (getEnv "REDIS_PASSWORD")
+
+  let connectInfo = R.defaultConnectInfo {
+    R.connectHost = host,
+    R.connectDatabase = database,
+    R.connectAuth = Just password
+  }
+  R.connect connectInfo
+
 
 getTWInfo :: IO TWInfo
 getTWInfo = do
   credential <- getCredential
   tokens <- getTokens
   return $ setCredential tokens credential def
+
 
 getConnection :: IO Connection
 getConnection = do
@@ -65,10 +90,12 @@ getConnection = do
   rabbitmqPassword <- liftM T.pack (getEnv "RABBITMQ_PASSWORD")
   openConnection rabbitmqHost "/" rabbitmqUser rabbitmqPassword
 
+
 getFeed :: IO (APIRequest StatusesFilter StreamingAPI)
 getFeed = do
   track <- liftM T.pack (getEnv "TWITTER_TRACK")
   return $ statusesFilterByTrack $ track
+
 
 getCredential :: IO Credential
 getCredential = do
@@ -79,6 +106,7 @@ getCredential = do
   return $
     Credential [(oauthToken, accessToken), (oauthTokenSecret, accessSecret)]
 
+
 getTokens :: IO OAuth
 getTokens = do
   consumerKey <- liftM pack (getEnv "TWITTER_CONSUMER_KEY")
@@ -88,28 +116,59 @@ getTokens = do
     oauthConsumerSecret = consumerSecret
   }
 
-handleStream :: Channel -> StreamingAPI -> IO ()
-handleStream chan tweet = do
+
+handleStream :: Channel -> R.Connection -> StreamingAPI -> IO ()
+handleStream chan redis tweet = do
   case tweet of
     SStatus status -> do
-      (publishTweet chan) . stripTweet $ status
-      -- TODO: Increment redis key here instead of in bayberry
+      chirp <- (publishTweet chan) . stripTweet $ status
+      incrementTweets chirp redis
 
     SRetweetedStatus retweet -> do
-      (publishTweet chan) . stripTweet . rsRetweetedStatus $ retweet
-      -- TODO: Increment redis key here instead of in bayberry
+      chirp <- (publishTweet chan) . stripTweet . rsRetweetedStatus $ retweet
+      incrementTweets chirp redis
 
     _ -> return ()
 
-stripTweet :: Status -> BL.ByteString
-stripTweet tweet = do
-  let body = statusText $ tweet
-  let format = "%a %b %d %H:%M:%S %z %Y"
-  let created = (formatTime defaultTimeLocale format) . statusCreatedAt $ tweet
-  encode $ StrippedTweet { created_at = created, text = body }
 
-publishTweet :: Channel -> BL.ByteString -> IO ()
-publishTweet chan body = do
+incrementTweets :: StrippedTweet -> R.Connection -> IO ()
+incrementTweets chirp redis = do
+  let key = posixDay . created_at $ chirp
+  let field = posixMinute . created_at $ chirp
+  R.runRedis redis $ R.hincrby key field (1 :: Integer)
+  return ()
+
+
+posixDay :: UTCTime -> ByteString
+posixDay time = do
+  let utcTime = utcToLocalTime utc time
+  let utcDay = utcTime { localTimeOfDay = midnight }
+  let key = init . show . utcTimeToPOSIXSeconds $ localTimeToUTC utc $ utcDay
+  pack $ "tweet:" ++ key
+
+
+posixMinute :: UTCTime -> ByteString
+posixMinute time = do
+  let utcTime = utcToLocalTime utc time
+  let utcTimeOfDay = localTimeOfDay utcTime
+  let utcMinute = utcTime { localTimeOfDay = utcTimeOfDay { todSec = 0 } }
+  pack . init . show . utcTimeToPOSIXSeconds $ localTimeToUTC utc $ utcMinute
+
+
+publishTweet :: Channel -> StrippedTweet -> IO StrippedTweet
+publishTweet chan tweet = do
+  let body = encode tweet
   let message = newMsg { msgBody = body, msgDeliveryMode = Just Persistent }
   publishMsg chan "" "tweets" message
-  return ()
+  return tweet
+
+
+stripTweet :: Status -> StrippedTweet
+stripTweet tweet = do
+  let body = statusText $ tweet
+  let created = statusCreatedAt $ tweet
+  StrippedTweet { created_at = created, text = body }
+
+
+twitterTime :: UTCTime -> String
+twitterTime = formatTime defaultTimeLocale "%a %b %d %H:%M:%S %z %Y"

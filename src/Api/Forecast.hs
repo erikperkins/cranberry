@@ -28,7 +28,7 @@ forecastRoutes = [("/", method GET forecastEndpoint)]
 forecastEndpoint :: Handler b Forecast ()
 forecastEndpoint = do
   modifyResponse $ setHeader "Content-Type" "application/json"
-  redisKeys <- runRedisDB redis $ keys "en:[0-9]*"
+  redisKeys <- runRedisDB redis $ keys "tweet:[0-9]*"
   key:_ <- case redisKeys of
     Left _ -> return []
     Right ks -> return . reverse . sort $ ks
