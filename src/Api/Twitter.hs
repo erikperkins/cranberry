@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Api.Twitter where
 
@@ -9,30 +10,53 @@ import Data.ByteString.Char8 (pack)
 import qualified Data.Conduit as C
 import Data.Conduit.List as CL
 import Web.Twitter.Conduit
-
 import Network.AMQP
-import qualified Data.Text as T (pack)
-import qualified Data.ByteString.Lazy.Char8 as BL (pack, ByteString)
+import qualified Data.Text as T (pack, Text)
+import qualified Data.ByteString.Lazy.UTF8 as BL (ByteString)
 import Control.Monad (liftM)
-import Web.Twitter.Types (StreamingAPI(..))
-import Web.Twitter.Types (Status, statusText, rsRetweetedStatus)
+import Web.Twitter.Types (Status, StreamingAPI(..))
+import Web.Twitter.Types (statusText, statusCreatedAt, rsRetweetedStatus)
+import GHC.Generics
+import Data.Aeson
+import Data.Time.Format (formatTime, defaultTimeLocale)
+import Control.Monad.Trans.Resource (MonadThrow, MonadUnliftIO)
+import Control.Exception (catch)
+import Data.Conduit.Attoparsec (ParseError)
+
+data StrippedTweet = StrippedTweet {
+  created_at :: String,
+  text :: T.Text
+} deriving (Generic, Show)
+
+instance ToJSON StrippedTweet where
+  toEncoding = genericToEncoding defaultOptions
 
 twitterStream :: IO ()
 twitterStream = do
+  twInfo <- getTWInfo
+  manager <- newManager tlsManagerSettings
+  feed <- getFeed
   conn <- getConnection
   chan <- openChannel conn
+  catch (consumeStream twInfo manager feed chan) $
+    \e -> do
+      print (e :: ParseError)
+      closeConnection conn
+      twitterStream
 
-  credential <- getCredential
-  tokens <- getTokens
-  let twInfo = setCredential tokens credential def
-
-  feed <- getFeed
-  manager <- newManager tlsManagerSettings
-
-  -- Wrap this in a try statement, repeat if exception thrown
+consumeStream :: (MonadThrow m, MonadUnliftIO m) =>
+  TWInfo -> Manager -> (APIRequest StatusesFilter StreamingAPI)
+    -> Channel -> m ()
+consumeStream twInfo manager feed chan = do
   runResourceT $ do
     src <- stream twInfo manager feed
-    C.runConduit $ src C..| CL.mapM_ (liftIO . (consumeStream chan))
+    C.runConduit $ src C..| CL.mapM_ (liftIO . (handleStream chan))
+
+getTWInfo :: IO TWInfo
+getTWInfo = do
+  credential <- getCredential
+  tokens <- getTokens
+  return $ setCredential tokens credential def
 
 getConnection :: IO Connection
 getConnection = do
@@ -64,22 +88,25 @@ getTokens = do
     oauthConsumerSecret = consumerSecret
   }
 
-consumeStream :: Channel -> StreamingAPI -> IO ()
-consumeStream chan tweet = do
-  -- TODO: handle malformed tweets
-  -- TODO: increment tweet count in redis
+handleStream :: Channel -> StreamingAPI -> IO ()
+handleStream chan tweet = do
   case tweet of
     SStatus status -> do
-      (publishTweet chan) . getTweetBody $ status
+      (publishTweet chan) . stripTweet $ status
+      -- TODO: Increment redis key here instead of in bayberry
 
     SRetweetedStatus retweet -> do
-      (publishTweet chan) . getTweetBody . rsRetweetedStatus $ retweet
+      (publishTweet chan) . stripTweet . rsRetweetedStatus $ retweet
+      -- TODO: Increment redis key here instead of in bayberry
 
     _ -> return ()
 
-
-getTweetBody :: Status -> BL.ByteString
-getTweetBody = BL.pack . show . statusText
+stripTweet :: Status -> BL.ByteString
+stripTweet tweet = do
+  let body = statusText $ tweet
+  let format = "%a %b %d %H:%M:%S %z %Y"
+  let created = (formatTime defaultTimeLocale format) . statusCreatedAt $ tweet
+  encode $ StrippedTweet { created_at = created, text = body }
 
 publishTweet :: Channel -> BL.ByteString -> IO ()
 publishTweet chan body = do
