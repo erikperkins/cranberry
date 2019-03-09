@@ -6,16 +6,16 @@ import Control.Exception (catch)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Resource (runResourceT)
 import Control.Monad.Trans.Resource (MonadThrow, MonadUnliftIO)
+import Data.Conduit (runConduit, (.|))
 import Data.Conduit.Attoparsec (ParseError)
-import Database.Redis hiding (stream)
+import Database.Redis (disconnect)
 import Stream.RabbitMQ
 import Stream.Redis
 import Stream.Twitter
-import Web.Twitter.Conduit
+import Web.Twitter.Conduit (stream)
 import Web.Twitter.Types (StreamingAPI(..))
 
-import qualified Data.Conduit as C
-import qualified Data.Conduit.List as L (mapM_)
+import qualified Data.Conduit.List as List (mapM_)
 
 
 receive :: IO ()
@@ -37,7 +37,7 @@ consume :: (MonadThrow m, MonadUnliftIO m) =>
 consume twitter rabbitmq redis = do
   runResourceT $ do
     src <- stream (twInfo twitter) (manager twitter) (feed twitter)
-    C.runConduit $ src C..| L.mapM_ (liftIO . (handle rabbitmq redis))
+    runConduit $ src .| List.mapM_ (liftIO . (handle rabbitmq redis))
 
 
 handle :: RabbitMQConnection -> RedisConnection -> StreamingAPI -> IO ()

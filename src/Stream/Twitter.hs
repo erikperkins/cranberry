@@ -4,12 +4,13 @@ module Stream.Twitter where
 
 import Control.Monad (liftM)
 import Data.Aeson
-import Data.ByteString.Char8 (pack)
+import Data.ByteString.UTF8 (fromString)
 import Data.Time
 import Data.Time.Format (formatTime, defaultTimeLocale)
 import System.Environment (getEnv)
 import Web.Twitter.Conduit
-import Web.Twitter.Types (Status(..), StreamingAPI(..), RetweetedStatus(..))
+import Web.Twitter.Types (Status(..), RetweetedStatus(..), User(..))
+import Web.Twitter.Types (StreamingAPI(..))
 
 import qualified Data.Text as T (pack, Text)
 
@@ -58,18 +59,18 @@ getTWInfo = do
 
 getCredential :: IO Credential
 getCredential = do
-  accessToken <- liftM pack (getEnv "TWITTER_ACCESS_TOKEN")
-  accessSecret <- liftM pack (getEnv "TWITTER_ACCESS_SECRET")
-  let oauthToken = pack "oauth_token"
-  let oauthTokenSecret = pack "oauth_token_secret"
+  accessToken <- liftM fromString (getEnv "TWITTER_ACCESS_TOKEN")
+  accessSecret <- liftM fromString (getEnv "TWITTER_ACCESS_SECRET")
+  let oauthToken = fromString "oauth_token"
+  let oauthTokenSecret = fromString "oauth_token_secret"
   return $
     Credential [(oauthToken, accessToken), (oauthTokenSecret, accessSecret)]
 
 
 getTokens :: IO OAuth
 getTokens = do
-  consumerKey <- liftM pack (getEnv "TWITTER_CONSUMER_KEY")
-  consumerSecret <- liftM pack (getEnv "TWITTER_CONSUMER_SECRET")
+  consumerKey <- liftM fromString (getEnv "TWITTER_CONSUMER_KEY")
+  consumerSecret <- liftM fromString (getEnv "TWITTER_CONSUMER_SECRET")
   return $ twitterOAuth {
     oauthConsumerKey = consumerKey,
     oauthConsumerSecret = consumerSecret
