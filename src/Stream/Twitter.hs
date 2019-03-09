@@ -23,14 +23,21 @@ data TwitterConnection = TwitterConnectInfo {
 
 
 data StrippedTweet = StrippedTweet {
+  tweetId :: Integer,
+  screenName :: T.Text,
   createdAt :: UTCTime,
   text :: T.Text
 } deriving Show
 
 
 instance ToJSON StrippedTweet where
-  toJSON (StrippedTweet createdAt' text') =
-    object ["created_at" .= twitterTimestamp createdAt', "text" .= text']
+  toJSON (StrippedTweet tweetId' screenName' createdAt' text') =
+    object [
+      "tweet_id" .= tweetId',
+       "screen_name" .= screenName',
+      "created_at" .= twitterTimestamp createdAt',
+      "text" .= text'
+    ]
 
 
 twitterTimestamp :: UTCTime -> String
@@ -85,14 +92,19 @@ getFeed = do
 
 stripTweet :: Status -> StrippedTweet
 stripTweet tweet = do
-  let body = statusText $ tweet
-  let created = statusCreatedAt $ tweet
-  StrippedTweet { createdAt = created, text = body }
+  StrippedTweet {
+    tweetId = statusId tweet,
+    screenName = userScreenName . statusUser $ tweet,
+    createdAt = statusCreatedAt tweet,
+    text = statusText tweet
+  }
 
 
 stripRetweet :: RetweetedStatus -> StrippedTweet
 stripRetweet retweet = do
-  let tweet = rsRetweetedStatus retweet
-  let body = statusText tweet
-  let created = rsCreatedAt retweet
-  StrippedTweet { createdAt = created, text = body }
+  StrippedTweet {
+    tweetId = statusId . rsRetweetedStatus $ retweet,
+    screenName = userScreenName . statusUser . rsRetweetedStatus $ retweet,
+    createdAt = rsCreatedAt retweet,
+    text = statusText . rsRetweetedStatus $ retweet
+  }
