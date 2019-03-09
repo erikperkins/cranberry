@@ -25,7 +25,17 @@ getRedisConnection = do
     connectDatabase = database,
     connectAuth = Just password
   }
-  connect connectInfo
+
+  redis <- connect connectInfo
+  setTrack redis
+  return redis
+
+
+setTrack :: Connection -> IO ()
+setTrack redis = do
+  track <- liftM pack (getEnv "TWITTER_TRACK")
+  _ <- runRedis redis $ set "twitter:track" track
+  return ()
 
 
 incrementTweets :: StrippedTweet -> Connection -> IO ()
