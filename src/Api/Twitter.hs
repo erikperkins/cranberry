@@ -1,32 +1,32 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 module Api.Twitter where
 
-import System.Environment (getEnv)
-import Control.Monad.Trans.Resource (runResourceT)
-import Control.Monad.IO.Class (liftIO)
-import Data.ByteString.Char8 (pack, ByteString)
-import qualified Data.Conduit as C
-import Data.Conduit.List as CL
-import Web.Twitter.Conduit
-import Network.AMQP
-import qualified Data.Text as T (pack, Text)
 import Control.Monad (liftM)
+import Control.Exception (catch)
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Trans.Resource (runResourceT)
+import Control.Monad.Trans.Resource (MonadThrow, MonadUnliftIO)
+import Data.Aeson
+import Data.ByteString.Char8 (pack, ByteString)
+import Data.Conduit.Attoparsec (ParseError)
+import Data.Conduit.List as CL
+import Data.Time
+import Data.Time.Format (formatTime, defaultTimeLocale)
+import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
+import Network.AMQP
+import System.Environment (getEnv)
+import Web.Twitter.Conduit
 import Web.Twitter.Types (Status, StreamingAPI(..))
 import Web.Twitter.Types (statusText, statusCreatedAt, rsRetweetedStatus)
-import Data.Aeson
-import Data.Time
-import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
-import Data.Time.Format (formatTime, defaultTimeLocale)
-import Control.Monad.Trans.Resource (MonadThrow, MonadUnliftIO)
-import Control.Exception (catch)
-import Data.Conduit.Attoparsec (ParseError)
+
+import qualified Data.Conduit as C
+import qualified Data.Text as T (pack, Text)
 import qualified Database.Redis as R
 
 
 data StrippedTweet = StrippedTweet {
-  created_at :: UTCTime,
+  createdAt :: UTCTime,
   text :: T.Text
 } deriving Show
 
@@ -133,8 +133,8 @@ handleStream chan redis tweet = do
 
 incrementTweets :: StrippedTweet -> R.Connection -> IO ()
 incrementTweets chirp redis = do
-  let key = posixDay . created_at $ chirp
-  let field = posixMinute . created_at $ chirp
+  let key = posixDay . createdAt $ chirp
+  let field = posixMinute . createdAt $ chirp
   R.runRedis redis $ R.hincrby key field (1 :: Integer)
   return ()
 
@@ -167,7 +167,7 @@ stripTweet :: Status -> StrippedTweet
 stripTweet tweet = do
   let body = statusText $ tweet
   let created = statusCreatedAt $ tweet
-  StrippedTweet { created_at = created, text = body }
+  StrippedTweet { createdAt = created, text = body }
 
 
 twitterTime :: UTCTime -> String
