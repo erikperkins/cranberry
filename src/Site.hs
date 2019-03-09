@@ -2,8 +2,8 @@
 
 module Site (cranberry) where
 
+import Api
 import Api.Forecast (forecastInit)
-import Application
 import Control.Monad (liftM)
 import Control.Monad.IO.Class (liftIO)
 import Data.ByteString (ByteString)

@@ -1,4 +1,4 @@
-module Application where
+module Api where
 
 import Api.Forecast (Forecast)
 import Control.Lens (lens, Lens')

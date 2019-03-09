@@ -19,6 +19,12 @@ data Forecast = Forecast { _redis :: Snaplet RedisDB }
 redis :: Lens' Forecast (Snaplet RedisDB)
 redis = lens _redis (\a b -> a { _redis = b })
 
+forecast :: Double -> [(Int, Int)] -> [(Int, Double)]
+forecast a s = do
+  let (t:ts', vs) = unzip . init . sort $ s
+  let fs = scanl (\x y -> (1.0 - a) * x + a * y) 20 $ map fromIntegral vs
+  let ts = scanl (\_ y -> y + 60) t (t:ts')
+  zip ts fs
 
 forecastInit :: Snaplet RedisDB -> SnapletInit b Forecast
 forecastInit redisSnaplet = makeSnaplet "forecast" "Forecast" Nothing $ do
@@ -47,11 +53,3 @@ forecastEndpoint = do
   let predictedValues = (map toTimeDatum) . (forecast 0.5) $ series
   let observedValues = (map toTimeDatum) $ series
   writeLBS . encode $ toForecast observedValues predictedValues
-
-
-forecast :: Double -> [(Int, Int)] -> [(Int, Double)]
-forecast a s = do
-  let (t:ts', vs) = unzip . init . sort $ s
-  let fs = scanl (\x y -> (1.0 - a) * x + a * y) 20 $ map fromIntegral vs
-  let ts = scanl (\_ y -> y + 60) t (t:ts')
-  zip ts fs
