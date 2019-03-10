@@ -42,7 +42,11 @@ incrementTweets :: StrippedTweet -> Connection -> IO ()
 incrementTweets chirp redis = do
   let key = posixDay . createdAt $ chirp
   let field = posixMinute . createdAt $ chirp
-  runRedis redis $ hincrby key field (1 :: Integer)
+  runRedis redis $ do
+    multiExec $ do
+      incrementField <- hincrby key field (1 :: Integer)
+      expireKey <- expire key 3600
+      return $ (,) <$> incrementField <*> expireKey
   return ()
 
 
