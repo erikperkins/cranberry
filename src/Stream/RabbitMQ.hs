@@ -4,7 +4,10 @@ module Stream.RabbitMQ where
 
 import Control.Monad (liftM)
 import Data.Aeson (encode)
+import Data.Map (fromList)
+import GHC.Int (Int64)
 import Network.AMQP
+import Network.AMQP.Types (FieldTable(..), FieldValue(..))
 import Stream.Twitter
 import System.Environment (getEnv)
 
@@ -24,10 +27,27 @@ getRabbitMQConnection :: IO RabbitMQConnection
 getRabbitMQConnection = do
   conn <- getConnection
   chan <- openChannel conn
+
+  messageTtl <- liftM (\a -> read a :: Int64) (getEnv "RABBITMQ_MESSAGE_TTL")
+  let headers = FieldTable $ fromList [("x-message-ttl", FVInt64 messageTtl)]
+
+  let options = newQueue {
+    queueName = "tweets",
+    queueAutoDelete = False,
+    queueDurable = False,
+    queueExclusive = False,
+    queuePassive = False,
+    queueHeaders = headers
+  }
+
+  deleteQueue chan "tweets"
+  declareQueue chan options
+
   return RabbitMQConnection {
     connection = conn,
     channel = chan
   }
+
 
 getConnection :: IO Connection
 getConnection = do
