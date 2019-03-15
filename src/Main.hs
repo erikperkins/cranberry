@@ -11,6 +11,7 @@ import Snap.Snaplet (serveSnaplet)
 
 main :: IO ()
 main = do
-  _ <- forkIO receive
+  thread <- forkIO receive
+  print thread
   serveSnaplet defaultConfig cranberry
   return ()

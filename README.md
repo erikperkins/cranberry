@@ -51,3 +51,41 @@ environment available to `root`. Specify the necessary environment variables in
 the run configuration (e.g. `REDIS_HOST`). This may also be necessary for test
 run configurations, depending on how environment variables are specified in the
 tests.
+
+## Exceptions
+This exception was logged by the application. It looks like the exception
+handling in Stream.hs is not catching it properly.
+```
+cranberry: HttpExceptionRequest Request {
+  host = "stream.twitter.com"
+  port = 443
+  secure = True
+  requestHeaders = [
+    ("Authorization","<REDACTED>"),
+    ("Content-Type","application/x-www-form-urlencoded")
+  ]
+  path = "/1.1/statuses/filter.json"
+  queryString = ""
+  method = "POST"
+  proxy = Nothing
+  rawBody = False
+  redirectCount = 10
+  responseTimeout = ResponseTimeoutDefault
+  requestVersion = HTTP/1.1
+}
+IncompleteHeaders
+```
+
+This exception was thrown by the API endpoint about 90 minutes after the 
+IncompleteHeaders exception. It looks like the application failed to retrieve 
+the Redis key containing the observed tweet tallies; that key had probably 
+expired when the request to Redis was made - the key TTL is reset to 1 hour
+every time a tweet is tallied.
+```
+A web handler threw an exception. Details:
+Pattern match failure in do expression at src/Api/Forecast.hs:44:3-7
+```
+
+
+
+
