@@ -2,20 +2,21 @@
 
 module Stream where
 
-import Control.Exception (catch)
+import Control.Exception(catch, SomeException)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Resource (runResourceT)
 import Control.Monad.Trans.Resource (MonadThrow, MonadUnliftIO)
 import Data.Conduit (runConduit, (.|))
 import Database.Redis (disconnect)
-import Network.HTTP.Client (HttpException(..))
 import Stream.RabbitMQ
 import Stream.Redis
 import Stream.Twitter
+import System.IO (hFlush, stdout)
 import Web.Twitter.Conduit (stream)
 import Web.Twitter.Types (StreamingAPI(..))
 
 import qualified Data.Conduit.List as List (mapM_)
+
 
 receive :: IO ()
 receive = do
@@ -23,13 +24,16 @@ receive = do
   rabbitmq <- getRabbitMQConnection
   redis <- getRedisConnection
 
-  catch (consume twitter rabbitmq redis) $
-    \e -> do
-      print ("Twitter API threw an exception" :: String)
-      print (e :: HttpException)
-      close rabbitmq
-      disconnect redis
-      receive
+  catch (consume twitter rabbitmq redis) (\e -> recover e rabbitmq redis)
+
+
+recover :: SomeException -> RabbitMQConnection -> RedisConnection -> IO ()
+recover exception rabbitmq redis = do
+  print exception
+  hFlush stdout
+  close rabbitmq
+  disconnect redis
+  receive
 
 
 consume :: (MonadThrow m, MonadUnliftIO m) =>

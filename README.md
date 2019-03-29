@@ -86,6 +86,7 @@ A web handler threw an exception. Details:
 Pattern match failure in do expression at src/Api/Forecast.hs:44:3-7
 ```
 
-
-
-
+This exception occurs when the RabbitMQ connection fails
+```
+cranberry: ConnectionClosedException Abnormal "Network.Socket.sendBuf: resource vanished (Connection reset by peer)"
+```
